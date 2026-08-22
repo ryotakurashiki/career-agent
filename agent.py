@@ -1,13 +1,19 @@
+import json
 import os
 from openai import OpenAI
 from config import DEFAULT_MODEL, SYSTEM_PROMPT
 
 
 class CareerAgent:
-    def __init__(self):
+    def __init__(self, profile: dict):
         # APIキーは環境変数から読む（.envからpython-dotenvが展開済み）
         self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         self.model = DEFAULT_MODEL
+
+        # プロフィールをシステムプロンプトに埋め込む
+        # LLMは毎回このプロンプトを受け取るので、常にユーザーの背景を把握した状態になる
+        profile_text = json.dumps(profile, ensure_ascii=False, indent=2)
+        self.system_prompt = SYSTEM_PROMPT + f"\n\n## 求職者のプロフィール\n\n```json\n{profile_text}\n```"
 
         # 会話履歴。ここにuserとassistantのやり取りを蓄積していく。
         # LLM自体は前の会話を覚えていないので、毎回この全履歴を送る。
@@ -18,10 +24,9 @@ class CareerAgent:
         self.messages.append({"role": "user", "content": user_input})
 
         # 2. APIを呼ぶ
-        #    systemはmessagesリストの最初に "role": "system" として渡す
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + self.messages,
+            messages=[{"role": "system", "content": self.system_prompt}] + self.messages,
         )
 
         # 3. LLMの返答を取り出す
