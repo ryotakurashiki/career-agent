@@ -5,12 +5,15 @@ from openai import OpenAI
 from config import DEFAULT_MODEL, SYSTEM_PROMPT, TOOLS
 from jobs.registry import JobRegistry
 from jobs.providers.dummy import DummyProvider
+from jobs.pipeline import JobPipeline
 
 
 class CareerAgent:
     def __init__(self, profile: dict, preferences: dict):
         self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         self.model = DEFAULT_MODEL
+        self.profile = profile
+        self.preferences = preferences
 
         # プロフィールと希望条件をシステムプロンプトに埋め込む
         profile_text = json.dumps(profile, ensure_ascii=False, indent=2)
@@ -25,8 +28,11 @@ class CareerAgent:
         self.messages = []
 
         # Providerを登録。将来ここに実APIのProviderを追加する。
-        self.registry = JobRegistry()
-        self.registry.register(DummyProvider())
+        registry = JobRegistry()
+        registry.register(DummyProvider())
+
+        # パイプライン初期化
+        self.pipeline = JobPipeline(registry, self.client)
 
     def chat(self, user_input: str) -> tuple[str, object]:
         self.messages.append({"role": "user", "content": user_input})
@@ -52,7 +58,7 @@ class CareerAgent:
                     result = self._execute_tool(tool_call)
                     self.messages.append({
                         "role": "tool",
-                        "tool_call_id": tool_call.id,  # どのtool_callへの返答かを紐付ける
+                        "tool_call_id": tool_call.id,
                         "content": result,
                     })
                 # ループを続け、tool結果を受け取ったLLMに再度返答させる
@@ -64,21 +70,16 @@ class CareerAgent:
                 return reply, response.usage
 
     def _execute_tool(self, tool_call) -> str:
-        """tool_callを受け取り、対応する関数を実行してJSON文字列で返す。"""
         name = tool_call.function.name
-        args = json.loads(tool_call.function.arguments)
 
         if name == "search_jobs":
-            return self._search_jobs(**args)
+            return self._search_jobs()
 
         return json.dumps({"error": f"unknown tool: {name}"}, ensure_ascii=False)
 
-    def _search_jobs(self, query="", location="", employment_type="any", limit=5) -> str:
-        """
-        求人を検索してJSON文字列で返す。
-        パラメータはLLMがシステムプロンプト（preferences含む）から判断して渡す。
-        """
-        jobs = self.registry.search(query, location, employment_type, limit)
+    def _search_jobs(self) -> str:
+        """パイプラインを実行して求人を検索し、JSON文字列で返す。"""
+        jobs = self.pipeline.run(self.profile, self.preferences)
 
         if not jobs:
             return json.dumps({"message": "条件に合う求人が見つかりませんでした。"}, ensure_ascii=False)

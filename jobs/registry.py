@@ -28,3 +28,7 @@ class JobRegistry:
                     results.append(job)
 
         return results[:limit]
+
+    def fetch_all(self, limit: int = 200) -> list[Job]:
+        """フィルタなしで全Providerから求人を取得する。パイプラインの最初のステップで使う。"""
+        return self.search("", "", "any", limit)

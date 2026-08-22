@@ -3,6 +3,11 @@ DOCS_DIR = "profile/docs"       # 読み込む原本ファイルの置き場
 PROFILE_PATH = "profile/profile.json"        # 抽出済みプロフィールの保存先
 PREFERENCES_PATH = "profile/preferences.json"  # 希望条件の保存先
 
+# パイプラインの件数設定
+FETCH_LIMIT = 200        # ②取得: Providerから取得する最大件数
+FAST_RANK_TOP_N = 15     # ④一次評価: FastRankerが残す件数
+DEEP_RANK_TOP_N = 5      # ⑤詳細評価: DeepRankerが残す件数（ユーザーに提案する件数）
+
 # モデル設定
 # GPT-5.6 シリーズ (2026年7月リリース、context: 1.05M tokens)
 #
@@ -11,6 +16,8 @@ PREFERENCES_PATH = "profile/preferences.json"  # 希望条件の保存先
 # gpt-5.6-sol   : $2.50/$15.00 per 1M tokens  - フラッグシップ。複雑な推論・Agent向け
 # gpt-4o-mini : 最安テスト用
 DEFAULT_MODEL = "gpt-4o-mini"
+FAST_RANKER_MODEL = "gpt-4o-mini"  # ④一次評価: 安くて速いモデル
+DEEP_RANKER_MODEL = "gpt-5.6-luna" # ⑤詳細評価: 精度の高いモデル
 
 # プロフィール抽出プロンプト
 # 職務経歴書・履歴書などの生テキストから、求人マッチに必要な情報をJSON形式で抽出する
@@ -81,6 +88,34 @@ PREFERENCES_EXTRACTION_PROMPT = """ユーザーの回答から転職希望条件
 }
 """
 
+# FastRankerのプロンプト
+# タイトルと概要だけで素早くスコアリングする。1回のAPIコールで全件処理。
+FAST_RANK_PROMPT = """求職者のプロフィールと希望条件をもとに、各求人を1〜10点でスコアリングしてください。
+
+判断材料は求人タイトルと概要のみです。速度優先で評価してください。
+
+スコア基準:
+8〜10: 希望職種・経験に強くマッチ
+5〜7 : 部分的にマッチ
+1〜4 : ほとんどマッチしない
+
+以下のJSON形式のみで返してください（説明不要）:
+{"scores": [{"id": "求人ID", "score": 数値}, ...]}
+"""
+
+# DeepRankerのプロンプト
+# 全フィールドを使って詳細に評価し、マッチング理由も出力する。
+DEEP_RANK_PROMPT = """求職者のプロフィールと希望条件をもとに、各求人を詳細に評価してランキングしてください。
+
+評価基準:
+- 職種・業務内容の一致度（最重要）
+- 求職者のスキル・経験との相性
+- キャリアの方向性・成長性との一致
+
+以下のJSON形式のみで返してください（スコアの高い順に並べること）:
+{"ranking": [{"id": "求人ID", "score": 数値(1-10), "reason": "マッチング理由（1〜2文、日本語）"}, ...]}
+"""
+
 # Tool定義
 # LLMに「どんな関数を呼べるか」を伝えるスキーマ。
 # required=[] にすることで全引数をoptionalにし、
@@ -90,32 +125,14 @@ SEARCH_JOBS_TOOL = {
     "function": {
         "name": "search_jobs",
         "description": (
-            "求人を検索する。ユーザーが求人を探してほしいと言ったとき、"
-            "または具体的な求人情報が必要なときに使う。"
-            "勤務地や職種が明示されていなくても、システムプロンプトの希望条件を"
-            "もとにすぐ呼んでよい。ユーザーに再確認する前にまず呼ぶこと。"
+            "求人を検索してTop5を返す。"
+            "プロフィールと希望条件はシステムプロンプトから自動で参照されるため、引数は不要。"
+            "ユーザーが求人を探してほしいと言ったとき、1回だけ呼ぶこと。"
+            "複数回呼ばないこと。"
         ),
         "parameters": {
             "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "職種・キーワード（例: PdM, 経営企画）。わからなければ空文字にする",
-                },
-                "location": {
-                    "type": "string",
-                    "description": "勤務地（例: ホーチミン, フルリモート）。わからなければ空文字にする",
-                },
-                "employment_type": {
-                    "type": "string",
-                    "enum": ["fulltime", "contract", "any"],
-                    "description": "雇用形態。fulltime=正社員, contract=業務委託, any=指定なし",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "取得する求人件数。デフォルトは5",
-                },
-            },
+            "properties": {},
             "required": [],
         },
     },

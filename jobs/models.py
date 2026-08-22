@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -12,3 +12,4 @@ class Job:
     description: str
     url: str
     source: str           # どのProviderから来たか（例: "dummy", "jooble"）
+    match_reason: str = field(default="")  # DeepRankerがマッチング理由を設定する
