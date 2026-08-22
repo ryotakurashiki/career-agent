@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from agent import CareerAgent
 from extractor import extract_profile
+from preferences import collect_preferences, load_preferences
 from config import PROFILE_PATH
 
 # .envファイルからAPIキーを環境変数に読み込む
@@ -23,9 +24,27 @@ def load_profile() -> dict:
         return extract_profile()
 
 
+def setup_preferences() -> dict:
+    """
+    preferences.json が存在すれば読み込む。
+    なければヒアリングを実行して保存・返す。
+    既存の場合は更新するか確認する。
+    """
+    existing = load_preferences()
+    if existing:
+        answer = input("\n前回の希望条件が見つかりました。更新しますか？ (y/N): ").strip().lower()
+        if answer == "y":
+            return collect_preferences()
+        return existing
+    else:
+        print("\n希望条件をヒアリングします。")
+        return collect_preferences()
+
+
 def main():
     profile = load_profile()
-    agent = CareerAgent(profile)
+    preferences = setup_preferences()
+    agent = CareerAgent(profile, preferences)
 
     print("\nCareer Agent へようこそ。")
     print("転職に関して何でも聞いてください。")
