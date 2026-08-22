@@ -81,6 +81,48 @@ PREFERENCES_EXTRACTION_PROMPT = """ユーザーの回答から転職希望条件
 }
 """
 
+# Tool定義
+# LLMに「どんな関数を呼べるか」を伝えるスキーマ。
+# required=[] にすることで全引数をoptionalにし、
+# 空で来た場合はPython側でpreferencesからフォールバックする。
+SEARCH_JOBS_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_jobs",
+        "description": (
+            "求人を検索する。ユーザーが求人を探してほしいと言ったとき、"
+            "または具体的な求人情報が必要なときに使う。"
+            "勤務地や職種が明示されていなくても、システムプロンプトの希望条件を"
+            "もとにすぐ呼んでよい。ユーザーに再確認する前にまず呼ぶこと。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "職種・キーワード（例: PdM, 経営企画）。わからなければ空文字にする",
+                },
+                "location": {
+                    "type": "string",
+                    "description": "勤務地（例: ホーチミン, フルリモート）。わからなければ空文字にする",
+                },
+                "employment_type": {
+                    "type": "string",
+                    "enum": ["fulltime", "contract", "any"],
+                    "description": "雇用形態。fulltime=正社員, contract=業務委託, any=指定なし",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "取得する求人件数。デフォルトは5",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+TOOLS = [SEARCH_JOBS_TOOL]
+
 # System instruction
 # LLMに「どんな役割か」を伝える。毎回の会話で必ず送られる。
 SYSTEM_PROMPT = """あなたは優秀なキャリアエージェントです。
