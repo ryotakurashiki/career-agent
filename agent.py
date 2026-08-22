@@ -6,6 +6,7 @@ from config import DEFAULT_MODEL, SYSTEM_PROMPT, TOOLS
 from jobs.registry import JobRegistry
 from jobs.providers.dummy import DummyProvider
 from jobs.pipeline import JobPipeline
+from jobs.feedback import FeedbackManager
 
 
 class CareerAgent:
@@ -33,6 +34,7 @@ class CareerAgent:
 
         # パイプライン初期化
         self.pipeline = JobPipeline(registry, self.client)
+        self.feedback = FeedbackManager()
 
     def chat(self, user_input: str) -> tuple[str, object]:
         self.messages.append({"role": "user", "content": user_input})
@@ -75,13 +77,27 @@ class CareerAgent:
         if name == "search_jobs":
             return self._search_jobs()
 
+        if name == "save_feedback":
+            args = json.loads(tool_call.function.arguments)
+            return self._save_feedback(**args)
+
         return json.dumps({"error": f"unknown tool: {name}"}, ensure_ascii=False)
 
     def _search_jobs(self) -> str:
         """パイプラインを実行して求人を検索し、JSON文字列で返す。"""
-        jobs = self.pipeline.run(self.profile, self.preferences)
+        feedback_summary = self.feedback.get_summary()
+        jobs = self.pipeline.run(self.profile, self.preferences, feedback_summary)
 
         if not jobs:
             return json.dumps({"message": "条件に合う求人が見つかりませんでした。"}, ensure_ascii=False)
 
         return json.dumps([asdict(job) for job in jobs], ensure_ascii=False, indent=2)
+
+    def _save_feedback(self, liked_job_ids=None, disliked_job_ids=None, comments=None) -> str:
+        """フィードバックを保存する。次回の search_jobs 呼び出し時に自動で反映される。"""
+        self.feedback.save(
+            liked_job_ids=liked_job_ids or [],
+            disliked_job_ids=disliked_job_ids or [],
+            comments=comments or [],
+        )
+        return json.dumps({"message": "フィードバックを保存しました。次回の求人検索に反映されます。"}, ensure_ascii=False)

@@ -22,7 +22,7 @@ class JobPipeline:
         self.fast_ranker = FastRanker(client, FAST_RANKER_MODEL)
         self.deep_ranker = DeepRanker(client, DEEP_RANKER_MODEL)
 
-    def run(self, profile: dict, preferences: dict) -> list[Job]:
+    def run(self, profile: dict, preferences: dict, feedback_summary: str = "") -> list[Job]:
         # ② 取得
         jobs = self.registry.fetch_all(limit=FETCH_LIMIT)
         print(f"[pipeline] 取得: {len(jobs)}件")
@@ -34,12 +34,12 @@ class JobPipeline:
         if not jobs:
             return []
 
-        # ④ 安いLLMで一次評価
-        jobs = self.fast_ranker.rank(jobs, profile, preferences, top_n=FAST_RANK_TOP_N)
+        # ④ 安いLLMで一次評価（フィードバック反映）
+        jobs = self.fast_ranker.rank(jobs, profile, preferences, top_n=FAST_RANK_TOP_N, feedback_summary=feedback_summary)
         print(f"[pipeline] 一次評価後: {len(jobs)}件")
 
-        # ⑤ 強いLLMで詳細評価
-        jobs = self.deep_ranker.rank(jobs, profile, preferences, top_n=DEEP_RANK_TOP_N)
+        # ⑤ 強いLLMで詳細評価（フィードバック反映）
+        jobs = self.deep_ranker.rank(jobs, profile, preferences, top_n=DEEP_RANK_TOP_N, feedback_summary=feedback_summary)
         print(f"[pipeline] 詳細評価後: {len(jobs)}件")
 
         return jobs

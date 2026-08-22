@@ -1,7 +1,8 @@
 # ディレクトリ設定
 DOCS_DIR = "profile/docs"       # 読み込む原本ファイルの置き場
-PROFILE_PATH = "profile/profile.json"        # 抽出済みプロフィールの保存先
+PROFILE_PATH = "profile/profile.json"          # 抽出済みプロフィールの保存先
 PREFERENCES_PATH = "profile/preferences.json"  # 希望条件の保存先
+FEEDBACK_PATH = "profile/feedback.json"        # 求人フィードバックの保存先
 
 # パイプラインの件数設定
 FETCH_LIMIT = 200        # ②取得: Providerから取得する最大件数
@@ -138,7 +139,39 @@ SEARCH_JOBS_TOOL = {
     },
 }
 
-TOOLS = [SEARCH_JOBS_TOOL]
+SAVE_FEEDBACK_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "save_feedback",
+        "description": (
+            "ユーザーが提案された求人に対して感想・フィードバックを述べたときに呼ぶ。"
+            "保存されたフィードバックは次回の求人検索・ランキングに自動で反映される。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "liked_job_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "気に入った求人のIDリスト",
+                },
+                "disliked_job_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "気に入らなかった求人のIDリスト",
+                },
+                "comments": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "求人への感想・避けたい条件など（例: '英語必須はNG', 'スタートアップ初期は避けたい'）",
+                },
+            },
+            "required": [],
+        },
+    },
+}
+
+TOOLS = [SEARCH_JOBS_TOOL, SAVE_FEEDBACK_TOOL]
 
 # System instruction
 # LLMに「どんな役割か」を伝える。毎回の会話で必ず送られる。

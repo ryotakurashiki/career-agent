@@ -17,7 +17,7 @@ class FastRanker:
         self.client = client
         self.model = model
 
-    def rank(self, jobs: list[Job], profile: dict, preferences: dict, top_n: int) -> list[Job]:
+    def rank(self, jobs: list[Job], profile: dict, preferences: dict, top_n: int, feedback_summary: str = "") -> list[Job]:
         if not jobs:
             return jobs
 
@@ -29,7 +29,8 @@ class FastRanker:
         user_content = (
             f"プロフィール:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
             f"希望条件:\n{json.dumps(preferences, ensure_ascii=False)}\n\n"
-            f"求人リスト:\n{jobs_text}"
+            + (f"{feedback_summary}\n\n" if feedback_summary else "")
+            + f"求人リスト:\n{jobs_text}"
         )
 
         response = self.client.chat.completions.create(
@@ -61,7 +62,7 @@ class DeepRanker:
         self.client = client
         self.model = model
 
-    def rank(self, jobs: list[Job], profile: dict, preferences: dict, top_n: int) -> list[Job]:
+    def rank(self, jobs: list[Job], profile: dict, preferences: dict, top_n: int, feedback_summary: str = "") -> list[Job]:
         if not jobs:
             return jobs
 
@@ -73,7 +74,8 @@ class DeepRanker:
         user_content = (
             f"プロフィール:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
             f"希望条件:\n{json.dumps(preferences, ensure_ascii=False)}\n\n"
-            f"求人リスト:\n{json.dumps(jobs_data, ensure_ascii=False)}"
+            + (f"{feedback_summary}\n\n" if feedback_summary else "")
+            + f"求人リスト:\n{json.dumps(jobs_data, ensure_ascii=False)}"
         )
 
         response = self.client.chat.completions.create(
