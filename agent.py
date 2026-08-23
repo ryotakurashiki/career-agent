@@ -4,7 +4,7 @@ from dataclasses import asdict
 from openai import OpenAI
 from config import DEFAULT_MODEL, SYSTEM_PROMPT, TOOLS
 from jobs.registry import JobRegistry
-from jobs.providers.dummy import DummyProvider
+from jobs.providers.web_search import WebSearchProvider
 from jobs.pipeline import JobPipeline
 from jobs.feedback import FeedbackManager
 
@@ -28,13 +28,16 @@ class CareerAgent:
         # 会話履歴
         self.messages = []
 
-        # Providerを登録。将来ここに実APIのProviderを追加する。
+        self.feedback = FeedbackManager()
+
+        self.web_search_provider = WebSearchProvider(self.client, preferences, self.feedback)
         registry = JobRegistry()
-        registry.register(DummyProvider())
+        registry.register(self.web_search_provider)
+        # 動作確認時は以下のコメントを外す
+        # registry.register(DummyProvider())
 
         # パイプライン初期化
         self.pipeline = JobPipeline(registry, self.client)
-        self.feedback = FeedbackManager()
 
     def chat(self, user_input: str) -> tuple[str, object]:
         self.messages.append({"role": "user", "content": user_input})
@@ -100,4 +103,5 @@ class CareerAgent:
             disliked_job_ids=disliked_job_ids or [],
             comments=comments or [],
         )
+        self.web_search_provider.clear_cache()
         return json.dumps({"message": "フィードバックを保存しました。次回の求人検索に反映されます。"}, ensure_ascii=False)

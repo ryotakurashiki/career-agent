@@ -17,8 +17,9 @@ DEEP_RANK_TOP_N = 5      # ⑤詳細評価: DeepRankerが残す件数（ユー�
 # gpt-5.6-sol   : $2.50/$15.00 per 1M tokens  - フラッグシップ。複雑な推論・Agent向け
 # gpt-4o-mini : 最安テスト用
 DEFAULT_MODEL = "gpt-4o-mini"
-FAST_RANKER_MODEL = "gpt-4o-mini"  # ④一次評価: 安くて速いモデル
-DEEP_RANKER_MODEL = "gpt-5.6-luna" # ⑤詳細評価: 精度の高いモデル
+FAST_RANKER_MODEL = "gpt-4o-mini"   # ④一次評価: 安くて速いモデル
+DEEP_RANKER_MODEL = "gpt-5.6-luna"  # ⑤詳細評価: 精度の高いモデル
+WEB_SEARCH_MODEL = "gpt-5.6-luna"    # WebSearchProvider用
 
 # プロフィール抽出プロンプト
 # 職務経歴書・履歴書などの生テキストから、求人マッチに必要な情報をJSON形式で抽出する
@@ -87,6 +88,36 @@ PREFERENCES_EXTRACTION_PROMPT = """ユーザーの回答から転職希望条件
   "重視する条件": [],
   "避けたい条件": []
 }
+"""
+
+# WebSearchProviderのプロンプト
+# 検索回数を抑えるため、条件を絞り込んで具体的に指示する。
+# URLは必ず実在するページのものを使わせる。
+WEB_SEARCH_PROMPT = """以下の条件でインターネット上の求人を検索し、50件程度見つけてください。
+検索は最大5回までにしてください。5回以内で見つかった求人だけを返せば十分です。
+
+検索条件:
+- 職種: {query}
+- 勤務地: {location}
+- 雇用形態: {employment_type}
+{feedback_section}
+見つかった求人を以下のJSON形式のみで返してください（前後の説明文は不要）:
+[
+  {{
+    "title": "求人タイトル",
+    "company": "会社名",
+    "location": "勤務地",
+    "employment_type": "fulltime または contract",
+    "salary": "給与・年収（不明なら空文字）",
+    "description": "業務内容（150文字以内）",
+    "url": "求人ページの実際のURL（必須）"
+  }}
+]
+
+【重要】
+- 必ず実在するURLのみ使うこと
+- 架空・推測のURLは絶対に使わないこと
+- URLが不明な求人は含めないこと
 """
 
 # FastRankerのプロンプト

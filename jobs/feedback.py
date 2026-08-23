@@ -27,6 +27,15 @@ class FeedbackManager:
         with open(self.path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
+    def get_comments(self) -> list[str]:
+        """過去のフィードバックコメントをリストで返す。WebSearchProviderが検索クエリに反映するために使う。"""
+        data = self._load_raw()
+        return [
+            comment
+            for entry in data["history"]
+            for comment in entry.get("comments", [])
+        ]
+
     def get_summary(self) -> str:
         """
         過去のフィードバック全体をテキストにまとめて返す。
