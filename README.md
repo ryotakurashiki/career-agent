@@ -94,6 +94,11 @@ jobs/
     dummy.py         # ダミーデータ（動作確認用）
     web_search.py    # OpenAI Responses API による Web 検索
 
+skills/
+  loader.py          # SKILL.md を読み込むユーティリティ
+  job-evaluation/
+    SKILL.md         # 求人評価の知識・評価観点・スコアの考え方
+
 profile/
   docs/              # 職務経歴書・履歴書（PDF）を置く場所
   profile.json       # 抽出済みプロフィール（自動生成）
