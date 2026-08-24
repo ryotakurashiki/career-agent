@@ -3,6 +3,9 @@ from dataclasses import asdict
 from openai import OpenAI
 from jobs.models import Job
 from config import FAST_RANK_PROMPT, DEEP_RANK_PROMPT
+from skills.loader import load_skill
+
+_JOB_EVALUATION_SKILL = load_skill("job-evaluation")
 
 
 class FastRanker:
@@ -33,10 +36,12 @@ class FastRanker:
             + f"求人リスト:\n{jobs_text}"
         )
 
+        system_prompt = _JOB_EVALUATION_SKILL + "\n\n" + FAST_RANK_PROMPT
+
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": FAST_RANK_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ],
             response_format={"type": "json_object"},
@@ -78,10 +83,12 @@ class DeepRanker:
             + f"求人リスト:\n{json.dumps(jobs_data, ensure_ascii=False)}"
         )
 
+        system_prompt = _JOB_EVALUATION_SKILL + "\n\n" + DEEP_RANK_PROMPT
+
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": DEEP_RANK_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ],
             response_format={"type": "json_object"},
